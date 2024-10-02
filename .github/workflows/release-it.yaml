@@ -1,0 +1,32 @@
+name: Release It
+on:
+  push:
+    branches:
+      - main
+      - beta
+concurrency: deploy-${{ github.ref }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skipci]')"
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: git config
+        run: |
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+      - run: yarn install
+      - run: |
+          npm config set //registry.npmjs.org/:_authToken $NPM_TOKEN
+
+          if [ "$GITHUB_REF_NAME" = "main" ]; then
+            yarn release
+          else
+            yarn release -- --preRelease=$GITHUB_REF_NAME
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
